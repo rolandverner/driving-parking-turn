@@ -262,7 +262,7 @@ if(c.k==='bump'){const b=wp(f,3.5,0.9);cx.setLineDash([0.4,0.3]);cx.beginPath();
 if(c.k==='par'){cx.setLineDash([0.4,0.3]);cx.beginPath();cx.moveTo(f.x-2,f.y);cx.lineTo(f.x+4.5,f.y);cx.stroke();cx.beginPath();cx.moveTo(f.x-2,sc.curb);cx.lineTo(f.x+4.5,sc.curb);cx.stroke();cx.setLineDash([]);lbl(tr('lPar'),f.x-2,11.5)}}
 function arrow(x,y,a){cx.save();cx.translate(x,y);cx.rotate(a);cx.beginPath();cx.moveTo(0.6,0);cx.lineTo(-0.3,-0.4);cx.lineTo(-0.3,0.4);cx.closePath();cx.fill();cx.restore()}
 function idx(fr,T){let lo=0,hi=fr.length-1;while(lo<hi){const m=(lo+hi+1)>>1;if(fr[m].T<=T)lo=m;else hi=m-1}return lo}
-function draw(){const sc=SC[cur],p=P[cur],fr=p.fr;const k=idx(fr,tm);cam(fr[k]);scene(sc);
+function draw(){if(SC[cur].multi)return mdraw();const sc=SC[cur],p=P[cur],fr=p.fr;const k=idx(fr,tm);cam(fr[k]);scene(sc);
 cx.lineWidth=0.14;cx.lineCap='round';
 for(let j=1;j<=k;j++){const a=fr[j-1],b=fr[j];if(a.x===b.x&&a.y===b.y)continue;cx.strokeStyle=b.dir<0?'#D85A30':'#1D9E75';cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke()}
 const f=fr[k];const moving=!f.stop&&!f.pause;
@@ -274,7 +274,7 @@ const g=document.getElementById('gear');const rev=f.dir<0;g.textContent=rev?'R':
 const w=document.getElementById('wheel');w.style.transform='rotate('+(f.s*120)+'deg)';
 document.getElementById('wtxt').textContent=f.s===0?tr('wS'):tr(f.s>0?'wR':'wL')+tr((f.r||R)<=5.5?'wFull':'wBit');
 document.getElementById('scrub').value=Math.min(1000,Math.round(tm/p.T*1000))}
-function setSc(i){cur=i;tm=0;size();
+function setSc(i){cur=i;tm=0;size();if(SC[i].multi)return msteps(i);
 const ul=document.getElementById('steps');ul.innerHTML='';SC[i].sg.forEach((g,j)=>{const li=document.createElement('li');const rv=(g.a!==undefined?g.dir:Math.sign(g.d))<0;const sgi=g.g?'<i class="ti ti-arrow-big-'+(g.g==='L'?'left':'right')+'" aria-hidden="true" style="color:'+AM+';font-size:16px"></i>':'<i class="ti ti-arrow-big-right" aria-hidden="true" style="visibility:hidden;font-size:16px"></i>';li.innerHTML=sgi+'<span class="pk-badge" style="background:'+(rv?'var(--bg-danger)':'var(--bg-success)')+';color:'+(rv?'var(--text-danger)':'var(--text-success)')+'">'+(rv?'R':'D')+'</span><span>'+(j+1)+'. '+tr(g.l)+'</span>';li.dataset.i=j;ul.appendChild(li);if(g.cue){const c=document.createElement('li');c.dataset.i=j;c.dataset.c='1';c.style.paddingLeft='62px';c.innerHTML='<i class="ti ti-eye" aria-hidden="true" style="color:'+AM+'"></i><span>'+tr(g.cue.t)+'</span>';c.style.cursor='pointer';c.onclick=()=>{const p=P[cur].fr.find(q=>q.cue===g.cue);tm=p.T+0.01;setPlay(false);draw()};ul.appendChild(c)}});
 document.getElementById('tip').textContent=tr(SC[i].tip);draw()}
 let m1=0,m2=0;
@@ -289,6 +289,92 @@ document.getElementById('rst').onclick=()=>{tm=0;setPlay(true);draw()};
 document.getElementById('scrub').oninput=e=>{tm=e.target.value/1000*P[cur].T;setPlay(false);draw()};
 function loop(ts){if(last!==null&&playing){tm+=(ts-last)/1000*parseFloat(document.getElementById('spd').value);const p=P[cur];if(tm>=p.T+1.5){tm=0}}last=ts;if(playing)draw();requestAnimationFrame(loop)}
 window.addEventListener('resize',()=>{size();draw()});
+Object.assign(S,{
+tRight:['Правило правой руки','Правило правої руки','Right-hand rule','Jobbkéz-szabály'],
+mNone:['Равнозначный перекрёсток: знаков и светофора нет','Рівнозначне перехрестя: знаків і світлофора немає','Equal intersection: no signs, no lights','Egyenrangú kereszteződés: nincs tábla, nincs lámpa'],
+r1n:['Справа машина','Справа машина','Car on the right','Jobbról autó'],
+r1a:['Машина справа едет первой','Машина справа їде першою','Car on the right goes first','A jobbról érkező megy először'],
+r1b:['Мы — после неё','Ми — після неї','We go after it','Mi utána megyünk'],
+r1t:['Кто справа — тот первый, куда бы он ни ехал.','Хто справа — той перший, куди б він не їхав.','Whoever is on your right goes first, wherever they are heading.','Aki jobbról jön, az megy először, bármerre is halad.'],
+r2n:['Справа поворачивает','Справа повертає','Right car turning','Jobbról kanyarodó'],
+r2a:['Машина справа поворачивает — всё равно первая','Машина справа повертає — все одно перша','Right car turns — still goes first','A jobbról érkező kanyarodik — mégis ő az első'],
+r2t:['Неважно, поворачивает машина справа или едет прямо — она первая.','Неважливо, повертає машина справа чи їде прямо — вона перша.','It does not matter whether the car on the right turns or goes straight — it goes first.','Mindegy, hogy a jobbról érkező kanyarodik vagy egyenesen megy — ő az első.'],
+r3n:['Мы направо, слева машина','Ми направо, зліва машина','We turn right, car on the left','Mi jobbra, balról autó'],
+r3a:['Мы первые: у нас справа никого','Ми перші: у нас справа нікого','We go first: nobody on our right','Mi megyünk először: jobbról nincs senki'],
+r3b:['Машина слева уступает нам','Машина зліва поступається нам','The car on the left yields to us','A balról érkező elsőbbséget ad nekünk'],
+r3t:['Для машины слева мы — помеха справа, поэтому ждёт она.','Для машини зліва ми — перешкода справа, тому чекає вона.','For the car on our left we are the car on its right, so it waits.','A balról érkezőnek mi jövünk jobbról, ezért ő vár.'],
+r4n:['Мы налево, встречная прямо','Ми наліво, зустрічна прямо','We turn left, oncoming straight','Mi balra, szemből egyenesen'],
+r4a:['Встречная прямо — первая','Зустрічна прямо — перша','Oncoming straight goes first','A szembejövő egyenesen megy először'],
+r4b:['Мы налево — после неё','Ми наліво — після неї','We turn left after it','Mi balra utána'],
+r4t:['Поворачивая налево, уступаем встречным, которые едут прямо или направо.','Повертаючи наліво, поступаємося зустрічним, що їдуть прямо або направо.','Turning left, yield to oncoming traffic going straight or right.','Balra kanyarodva elsőbbséget adunk a szemből egyenesen vagy jobbra haladóknak.'],
+r5n:['Три машины','Три машини','Three cars','Három autó'],
+r5a:['Справа от нас — у неё справа пусто, она первая','Праворуч від нас — у неї справа порожньо, вона перша','The car on our right has nobody on its right — it goes first','A jobbról érkezőtől jobbra nincs senki — ő az első'],
+r5b:['Теперь у нас справа пусто — едем мы','Тепер у нас справа порожньо — їдемо ми','Now our right is clear — we go','Most tőlünk jobbra üres — mi megyünk'],
+r5c:['Машина слева — последняя','Машина зліва — остання','Car on the left goes last','A balról érkező az utolsó'],
+r5t:['Ищем машину, у которой справа никого нет — она первая. Дальше по цепочке.','Шукаємо машину, у якої справа нікого немає — вона перша. Далі по ланцюжку.','Find the car with nobody on its right — it goes first. Then follow the chain.','Keressük azt az autót, amelytől jobbra nincs senki — ő az első. Utána sorban.'],
+r6n:['Четыре машины (тупик)','Чотири машини (глухий кут)','Four cars (deadlock)','Négy autó (patthelyzet)'],
+r6c:['Тупик: у каждого справа кто-то есть','Глухий кут: у кожного справа хтось є','Deadlock: everyone has someone on the right','Patthelyzet: mindenkitől jobbra áll valaki'],
+r6x:['Договариваемся: машина слева уступает жестом','Домовляємося: машина зліва поступається жестом','Agree: the car on our left waves the others through','Megegyezés: a balról érkező intéssel átengedi a többieket'],
+r6a:['Встречная: справа уступили — едет первой','Зустрічна: справа поступилися — їде першою','Oncoming: its right gave way — goes first','Szemből: tőle jobbra átengedték — ő megy először'],
+r6b:['Машина справа','Машина справа','Car on the right','A jobbról érkező'],
+r6d:['Мы','Ми','Us','Mi'],
+r6e:['Уступившая машина — последней','Машина, що поступилася, — останньою','The car that gave way goes last','Aki átengedett, az utolsó'],
+r6t:['Правило само не решает тупик. Водители договариваются: один уступает, дальше обычная цепочка.','Правило саме не розв’язує глухий кут. Водії домовляються: один поступається, далі звичайний ланцюжок.','The rule alone cannot break a deadlock. Drivers agree: one gives way, then the normal chain applies.','A szabály önmagában nem oldja fel a patthelyzetet. A vezetők megegyeznek: egyikük átenged, utána a szokásos sorrend.'],
+r7n:['Т-перекрёсток','Т-перехрестя','T-junction','T-elágazás'],
+r7a:['Из примыкающей дороги — у нас справа, она первая','З прилеглої дороги — у нас справа, вона перша','From the side road — on our right, goes first','A becsatlakozó útról — tőlünk jobbra, ő az első'],
+r7b:['Мы по «прямой» дороге — всё равно ждём','Ми по «прямій» дорозі — все одно чекаємо','We on the “through” road still wait','Mi az „átmenő” úton is várunk'],
+r7t:['На равнозначном Т-перекрёстке «прямая» дорога не главная. Машина из примыкания справа — первая.','На рівнозначному Т-перехресті «пряма» дорога не головна. Машина з примикання справа — перша.','At an equal T-junction the through road is not a main road. The car from the side road on your right goes first.','Egyenrangú T-elágazásban az átmenő út nem főút. A jobbról becsatlakozó megy először.'],
+r8n:['Трамвай слева','Трамвай зліва','Tram from the left','Villamos balról'],
+r8a:['Трамвай первый, даже слева','Трамвай перший, навіть зліва','Tram goes first, even from the left','A villamos az első, balról is'],
+r8b:['Мы — после трамвая','Ми — після трамвая','We go after the tram','Mi a villamos után'],
+r8t:['На равнозначном перекрёстке трамвай имеет преимущество и справа, и слева.','На рівнозначному перехресті трамвай має перевагу і справа, і зліва.','At an equal intersection the tram has priority from the right and from the left.','Egyenrangú kereszteződésben a villamosnak jobbról és balról is elsőbbsége van.'],
+tram:['трамвай','трамвай','tram','villamos']
+});
+TREE.push({n:'tRight',c:[]});
+[
+{n:'r1n',tip:'r1t',cars:[{f:0,tn:'S',o:2,me:1},{f:3,tn:'S',o:1}],ph:[{o:1,t:'r1a'},{o:2,t:'r1b'}]},
+{n:'r2n',tip:'r2t',cars:[{f:0,tn:'S',o:2,me:1},{f:3,tn:'R',o:1}],ph:[{o:1,t:'r2a'},{o:2,t:'r1b'}]},
+{n:'r3n',tip:'r3t',cars:[{f:0,tn:'R',o:1,me:1},{f:1,tn:'S',o:2}],ph:[{o:1,t:'r3a'},{o:2,t:'r3b'}]},
+{n:'r4n',tip:'r4t',cars:[{f:0,tn:'L',o:2,me:1},{f:2,tn:'S',o:1}],ph:[{o:1,t:'r4a'},{o:2,t:'r4b'}]},
+{n:'r5n',tip:'r5t',cars:[{f:0,tn:'S',o:2,me:1},{f:3,tn:'S',o:1},{f:1,tn:'S',o:3}],ph:[{o:1,t:'r5a'},{o:2,t:'r5b'},{o:3,t:'r5c'}]},
+{n:'r6n',tip:'r6t',cars:[{f:0,tn:'S',o:3,me:1},{f:3,tn:'S',o:2},{f:2,tn:'S',o:1},{f:1,tn:'S',o:4}],ph:[{o:0,t:'r6c',cue:1},{o:0,t:'r6x',cue:1},{o:1,t:'r6a'},{o:2,t:'r6b'},{o:3,t:'r6d'},{o:4,t:'r6e'}]},
+{n:'r7n',tip:'r7t',lay2:'t3',cars:[{f:1,tn:'S',o:2,me:1},{f:0,tn:'L',o:1}],ph:[{o:1,t:'r7a'},{o:2,t:'r7b'}]},
+{n:'r8n',tip:'r8t',tramL:1,cars:[{f:0,tn:'S',o:2,me:1},{f:1,tn:'S',o:1,tram:1}],ph:[{o:1,t:'r8a'},{o:2,t:'r8b'}]}
+].forEach(v=>{v.lay='x4';v.multi=1;TREE[2].c.push(SC.length);SC.push(v)});
+VY.x4=[0,24];
+const XC=18,YC=12,VA=3,VG=4.5;
+function mpath(c){const off=c.tram?18:19.75;let x=off,y=c.tram?40:28,t=-Math.PI/2;const ap=c.tram?40-19.5:8.5;const segs=[[ap,0,1]];
+if(c.tn==='S')segs.push([26,0,1]);if(c.tn==='R')segs.push([0.75,0,1],[5*Math.PI/2,1,5],[14,0,1]);if(c.tn==='L')segs.push([1.75,0,1],[7.5*Math.PI/2,-1,7.5],[14,0,1]);
+const fr=[{x,y,t,s:0}];for(const [d,s,r] of segs){const n=Math.ceil(d/0.05),ds=d/n;for(let i=0;i<n;i++){x+=Math.cos(t)*ds;y+=Math.sin(t)*ds;if(s)t+=ds*s/r;fr.push({x,y,t,s,r})}}
+const k=c.f,ca=[1,0,-1,0][k],sa=[0,1,0,-1][k];return {ap,fr:fr.map(p=>({x:XC+(p.x-XC)*ca-(p.y-YC)*sa,y:YC+(p.x-XC)*sa+(p.y-YC)*ca,t:p.t+k*Math.PI/2,s:p.s,r:p.r}))}}
+function mbuild(sc){const A=8.5/VA;let T=A;const st={},ph=[];for(const p of sc.ph){if(p.cue){ph.push({...p,T0:T,T1:T+2.8});T+=2.8;continue}const cs=sc.cars.filter(c=>c.o===p.o);st[p.o]=T;const len=Math.max(...cs.map(c=>c.P.fr.length*0.05-c.P.ap));const dur=Math.min(len,c0len(cs))/VG;ph.push({...p,T0:T,T1:T+dur});T+=dur+0.4}
+sc.A=A;sc.st=st;sc.phs=ph;return {fr:[],T:T+0.6}}
+function c0len(cs){return Math.max(...cs.map(c=>c.tram?30:(c.tn==='S'?18:c.tn==='R'?14:17)))}
+SC.forEach((sc,i)=>{if(sc.multi){sc.cars.forEach(c=>{c.P=mpath(c);c.g=c.tn==='R'?'R':c.tn==='L'?'L':''});P[i]=mbuild(sc)}});
+function mpose(sc,c,t){const P=c.P;let d;if(t<sc.A)d=(c.tram?P.ap*(t/sc.A):P.ap*(t/sc.A));else if(c.tram&&false)d=0;else{const s0=sc.st[c.o];d=t<s0?P.ap:P.ap+(t-s0)*VG}
+const i=Math.min(P.fr.length-1,Math.round(d/0.05));const f=P.fr[i];return {...f,moving:t<sc.A||(t>=sc.st[c.o]&&i<P.fr.length-1),gone:i>=P.fr.length-1,go:t>=sc.st[c.o]}}
+function mscene(sc){const road=V('--bg-neutral'),ln=V('--text-muted'),bd=V('--border-strong');cx.clearRect(-1,-6,W+2,50);cx.fillStyle=road;cx.fillRect(0,8.5,W,7);
+if(sc.lay2==='t3')cx.fillRect(14.5,15.5,7,9);else cx.fillRect(14.5,-1,7,26);
+cx.strokeStyle=bd;cx.lineWidth=0.2;cx.beginPath();cx.moveTo(0,15.5);cx.lineTo(14.5,15.5);cx.lineTo(14.5,25);cx.moveTo(21.5,25);cx.lineTo(21.5,15.5);cx.lineTo(W,15.5);
+if(sc.lay2==='t3'){cx.moveTo(0,8.5);cx.lineTo(W,8.5)}else{cx.moveTo(0,8.5);cx.lineTo(14.5,8.5);cx.lineTo(14.5,-1);cx.moveTo(21.5,-1);cx.lineTo(21.5,8.5);cx.lineTo(W,8.5)}cx.stroke();
+hl(12,0,14.5,1,ln);hl(12,21.5,W,1,ln);cx.strokeStyle=ln;cx.lineWidth=0.12;cx.setLineDash([1.5,1.2]);cx.beginPath();cx.moveTo(18,15.5);cx.lineTo(18,25);if(sc.lay2!=='t3'){cx.moveTo(18,-1);cx.lineTo(18,8.5)}cx.stroke();cx.setLineDash([]);
+if(sc.tramL){cx.strokeStyle=bd;cx.lineWidth=0.1;[11.3,12.7].forEach(y=>{cx.beginPath();cx.moveTo(0,y);cx.lineTo(W,y);cx.stroke()})}
+cx.fillStyle=V('--text-secondary');cx.font=fpx(0.7)+'px system-ui,sans-serif';cx.fillText(tr('mNone'),CAMX+0.6,1.2)}
+function tramDraw(x,y,t){cx.save();cx.translate(x,y);cx.rotate(t);cx.fillStyle='#EF9F27';rr(-1,-1.2,15,2.4,0.4);cx.fill();cx.fillStyle='rgba(255,255,255,0.6)';for(let i=0;i<5;i++)cx.fillRect(0.5+i*2.7,-0.9,1.8,0.4),cx.fillRect(0.5+i*2.7,0.5,1.8,0.4);cx.restore()}
+function badge(x,y,n,on){cx.beginPath();cx.arc(x,y,0.8,0,7);cx.fillStyle=on?AM:V('--surface-2');cx.fill();cx.strokeStyle=on?AM:V('--border-strong');cx.lineWidth=0.08;cx.stroke();cx.fillStyle=on?'#412402':V('--text-primary');cx.font='500 '+fpx(0.95)+'px system-ui,sans-serif';cx.textAlign='center';cx.textBaseline='middle';cx.fillText(n,x,y+0.05);cx.textAlign='start';cx.textBaseline='alphabetic'}
+function mdraw(){const sc=SC[cur],p=P[cur];const me=sc.cars.find(c=>c.me);const mp=mpose(sc,me,tm);
+const v=VY.x4;CAMX=VW>=W?0:Math.min(W-VW,Math.max(0,XC-VW/2));cx.setTransform(DPR*SCL,0,0,DPR*SCL,0,0);cx.translate(-CAMX,-v[0]);mscene(sc);
+const cur_ph=sc.phs.filter(q=>tm>=q.T0).pop();const ao=cur_ph&&!cur_ph.cue?cur_ph.o:-1;
+sc.cars.forEach(c=>{const f=mpose(sc,c,tm);if(f.gone)return;if(c.tram)tramDraw(f.x,f.y,f.t);else car(f.x,f.y,f.t,c.me?'#378ADD':'#888780',f.go?f.s:0,f.r,false,true,c.g);
+const bx=f.x+Math.cos(f.t)*1.25,by=f.y+Math.sin(f.t)*1.25;badge(bx+(c.tram?0:0),by-(c.tram?2:0)+0,c.o,c.o===ao)});
+document.querySelectorAll('#steps li').forEach(li=>{li.classList.toggle('on',cur_ph&&+li.dataset.i===sc.phs.indexOf(cur_ph))});
+const cb=document.getElementById('cue');cb.style.visibility=cur_ph&&cur_ph.cue?'visible':'hidden';cb.querySelector('span').textContent=cur_ph&&cur_ph.cue?tr(cur_ph.t):'.';
+['sgL','sgR'].forEach(id=>{const on=me.g===(id==='sgL'?'L':'R');document.getElementById(id).style.color=on?(blink()?AM:'var(--text-muted)'):'var(--border-strong)'});
+const g=document.getElementById('gear');g.textContent='D';g.style.background='var(--bg-success)';g.style.color='var(--text-success)';
+document.getElementById('wheel').style.transform='rotate('+((mp.go?mp.s:0)*120)+'deg)';document.getElementById('wtxt').textContent=!mp.go||!mp.s?tr('wS'):tr(mp.s>0?'wR':'wL');
+document.getElementById('scrub').value=Math.min(1000,Math.round(tm/p.T*1000))}
+function msteps(i){const sc=SC[i];const ul=document.getElementById('steps');ul.innerHTML='';sc.phs.forEach((q,j)=>{const li=document.createElement('li');li.dataset.i=j;li.innerHTML=(q.cue?'<i class="ti ti-eye" aria-hidden="true" style="color:'+AM+'"></i>':'<span class="pk-badge" style="background:var(--bg-neutral);color:var(--text-primary);border-radius:50%">'+q.o+'</span>')+'<span>'+tr(q.t)+'</span>';li.style.cursor='pointer';li.onclick=()=>{tm=q.T0+0.01;setPlay(false);draw()};ul.appendChild(li)});document.getElementById('tip').textContent=tr(sc.tip);draw()}
+
 function setLang(i){L=i;try{localStorage.setItem('pk-lang',LANGS[i])}catch(e){}document.documentElement.lang=LANGS[i];document.querySelectorAll('#lang button').forEach((b,j)=>b.className=j===i?'on':'');['title','sub','note','fwd','back'].forEach(k=>{const e=document.getElementById('t-'+k);if(e)e.textContent=tr(k)});document.title=tr('title');const keep=tm;setSc(cur);tm=keep;menu();draw()}
 (function(){const q=new URLSearchParams(location.search).get('lang');let s=null;try{s=localStorage.getItem('pk-lang')}catch(e){}const n=(navigator.language||'ru').slice(0,2);const c=[q,s,n].find(x=>LANGS.includes(x));L=c?LANGS.indexOf(c):0;
 const el=document.getElementById('lang');LANGS.forEach((x,i)=>{const b=document.createElement('button');b.textContent=x.toUpperCase();b.onclick=()=>setLang(i);el.appendChild(b)})})();
