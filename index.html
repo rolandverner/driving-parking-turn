@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a1a19">
+<title>Парковка и развороты</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+:root{--surface-0:#f5f4ef;--surface-2:#fff;--bg-neutral:#ebe9e2;--text-primary:#1a1a1a;--text-secondary:#5f5e5a;--text-muted:#888780;--border:rgba(0,0,0,.1);--border-strong:rgba(0,0,0,.22);--bg-accent:#e6f1fb;--text-accent:#185fa5;--border-accent:#378add;--bg-warning:#faeeda;--text-warning:#854f0b;--bg-danger:#fcebeb;--text-danger:#a32d2d;--bg-success:#eaf3de;--text-success:#3b6d11;--radius:8px}
+@media (prefers-color-scheme:dark){:root{--surface-0:#1a1a19;--surface-2:#262624;--bg-neutral:#333331;--text-primary:#eeede8;--text-secondary:#b4b2a9;--text-muted:#888780;--border:rgba(255,255,255,.08);--border-strong:rgba(255,255,255,.22);--bg-accent:#0c447c;--text-accent:#b5d4f4;--border-accent:#378add;--bg-warning:#412402;--text-warning:#fac775;--bg-danger:#501313;--text-danger:#f7c1c1;--bg-success:#173404;--text-success:#c0dd97}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--surface-0);color:var(--text-primary);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:820px;margin:0 auto;padding:max(16px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 40px max(12px,env(safe-area-inset-left))}
+h1{font-size:22px;font-weight:500;margin:0}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.sub{color:var(--text-secondary);font-size:14px;margin:4px 0 0}
+button,select{font:inherit;font-size:14px;color:var(--text-primary);background:transparent;border:.5px solid var(--border-strong);border-radius:var(--radius);padding:7px 12px;min-height:38px;cursor:pointer;touch-action:manipulation}
+button:hover{background:var(--bg-neutral)}
+input[type=range]{accent-color:var(--border-accent);height:32px}
+#lang{display:flex;gap:4px}
+#lang button{min-width:44px}
+#lang button.on,.pk-tabs button.on{background:var(--bg-accent);color:var(--text-accent);border-color:var(--border-accent)}
+.note{font-size:13px;color:var(--text-muted);margin-top:16px}
+.pk-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.pk-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0}
+.pk-steps{margin:8px 0 0;padding:0;list-style:none;font-size:15px}
+.pk-steps li{padding:6px 8px;border-radius:var(--radius);color:var(--text-secondary);display:flex;gap:8px;align-items:baseline}
+.pk-steps li.on{background:var(--bg-neutral);color:var(--text-primary)}
+.pk-badge{font-size:12px;padding:1px 7px;border-radius:var(--radius);min-width:14px;text-align:center}
+@media (max-width:560px){h1{font-size:19px}.pk-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-12px;margin-right:-12px;padding:0 12px}.pk-tabs::-webkit-scrollbar{display:none}.pk-tabs button{flex:0 0 auto;white-space:nowrap}.pk-steps{font-size:14px}.pk-steps li[data-c="1"]{padding-left:30px!important}#cv{border-radius:8px!important}.legend{margin-left:0!important}}
+</style>
+</head>
+<body>
+<main>
+<div class="top"><div><h1 id="t-title">Парковка и развороты</h1><p class="sub" id="t-sub"></p></div><div id="lang" role="group" aria-label="Language"></div></div>
+<div class="pk-tabs" id="m1"></div><div class="pk-tabs" id="m2"></div><div class="pk-tabs" id="tabs"></div>
+<canvas id="cv" style="width:100%;display:block;border-radius:12px;border:.5px solid var(--border);background:var(--surface-2);touch-action:pan-y"></canvas>
+<div id="cue" style="visibility:hidden;margin:8px 0 0;padding:8px 12px;border-radius:var(--radius);background:var(--bg-warning);color:var(--text-warning);font-size:14px;display:flex;gap:8px;align-items:center"><i class="ti ti-eye" aria-hidden="true"></i><span>.</span></div>
+<div class="pk-row">
+<button id="play" aria-label="Pause"><i class="ti ti-player-pause" aria-hidden="true"></i></button>
+<button id="rst" aria-label="Restart"><i class="ti ti-refresh" aria-hidden="true"></i></button>
+<input type="range" id="scrub" min="0" max="1000" step="1" value="0" style="flex:1;min-width:120px">
+<select id="spd"><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="2">2x</option></select>
+</div>
+<div class="pk-row" style="font-size:14px;gap:16px">
+<span style="display:flex;gap:2px;font-size:22px"><i id="sgL" class="ti ti-arrow-big-left" aria-hidden="true"></i><i id="sgR" class="ti ti-arrow-big-right" aria-hidden="true"></i></span>
+<span id="gear" class="pk-badge" style="font-size:14px;font-weight:500;padding:3px 10px">D</span>
+<span style="display:flex;align-items:center;gap:6px"><i id="wheel" class="ti ti-steering-wheel" aria-hidden="true" style="font-size:22px;display:inline-block;transition:transform .25s"></i><span id="wtxt"></span></span>
+<span class="legend" style="color:var(--text-secondary);font-size:13px;display:flex;gap:12px;margin-left:auto"><span><span style="display:inline-block;width:14px;height:3px;background:#1D9E75;vertical-align:middle"></span> <span id="t-fwd"></span></span><span><span style="display:inline-block;width:14px;height:3px;background:#D85A30;vertical-align:middle"></span> <span id="t-back"></span></span></span>
+</div>
+<ul class="pk-steps" id="steps"></ul>
+<p id="tip" style="font-size:13px;color:var(--text-secondary);margin:10px 0 0;line-height:1.6"></p>
+<p class="note" id="t-note"></p>
+</main>
+<script>
+const R=5,DG=Math.PI/180,W=36;
+const S={
+s0n:['Задом','Задом','Reverse','Tolatva'],
+s0a:['Едем по правой полосе, 0,5–1 м от машин','Їдемо правою смугою, 0,5–1 м від машин','Drive in the right lane, 0.5–1 m from parked cars','Haladjunk a jobb sávban, 0,5–1 m-re az autóktól'],
+s0ac:['Наши зеркала на одной линии с зеркалами передней машины → стоп','Наші дзеркала на одній лінії з дзеркалами передньої машини → стоп','Our mirrors in line with the front car’s mirrors → stop','A tükreink egy vonalban az elöl álló autó tükreivel → megállás'],
+revR:['Задний ход. Руль вправо до упора','Задній хід. Кермо вправо до упору','Reverse. Full lock right','Hátramenet. Kormány teljesen jobbra'],
+s0bc:['В левом зеркале полностью видна задняя машина → руль прямо','У лівому дзеркалі повністю видно задню машину → кермо прямо','Rear car fully visible in the left mirror → wheel straight','A bal tükörben teljesen látszik a hátsó autó → kormány egyenesbe'],
+s0c:['Колёса прямо, едем назад под углом','Колеса прямо, їдемо назад під кутом','Wheels straight, reverse at an angle','Kerekek egyenesen, tolatás ferdén'],
+s0cc:['Передний бампер поравнялся с задним бампером передней машины → руль влево до упора','Передній бампер порівнявся із заднім бампером передньої машини → кермо вліво до упору','Front bumper level with the front car’s rear bumper → full lock left','Az első lökhárító egy vonalban az elöl álló autó hátsó lökhárítójával → kormány teljesen balra'],
+s0d:['Руль влево до упора, продолжаем назад','Кермо вліво до упору, продовжуємо назад','Full lock left, keep reversing','Kormány teljesen balra, tovább tolatunk'],
+parStop:['Машина параллельна бордюру → стоп, руль прямо','Машина паралельна бордюру → стоп, кермо прямо','Car parallel to the curb → stop, wheel straight','Az autó párhuzamos a szegéllyel → megállás, kormány egyenesbe'],
+s0e:['Чуть вперёд — встаём по центру, поворотник выкл.','Трохи вперед — стаємо по центру, поворотник вимк.','Ease forward to center, signal off','Kicsit előre, középre állunk, irányjelző ki'],
+s0t:['Поворотник вправо — с момента, как решили парковаться, и до конца манёвра.','Поворотник вправо — з моменту, як вирішили паркуватися, і до кінця маневру.','Right signal on from the moment you decide to park until the end of the manoeuvre.','Jobb irányjelző attól kezdve, hogy parkolni akarunk, a manőver végéig.'],
+s1n:['Передом','Передом','Forward','Előre'],
+rl:['Едем по правой полосе','Їдемо правою смугою','Drive in the right lane','Haladjunk a jobb sávban'],
+s1ac:['Плечи на уровне переднего бампера задней машины → руль вправо до упора','Плечі на рівні переднього бампера задньої машини → кермо вправо до упору','Shoulders level with the rear car’s front bumper → full lock right','A vállunk egy vonalban a hátsó autó első lökhárítójával → kormány teljesen jobbra'],
+s1b:['Руль вправо до упора, заходим в карман','Кермо вправо до упору, заходимо в кишеню','Full lock right, enter the gap','Kormány teljesen jobbra, beállunk a résbe'],
+s1bc:['Машина под углом ~20° к бордюру → руль прямо','Машина під кутом ~20° до бордюру → кермо прямо','Car at ~20° to the curb → wheel straight','Az autó kb. 20°-os szögben a szegélyhez → kormány egyenesbe'],
+s1c:['Колёса прямо, едем вперёд под углом','Колеса прямо, їдемо вперед під кутом','Wheels straight, drive forward at an angle','Kerekek egyenesen, előre ferdén'],
+s1cc:['Правый передний угол подходит к бордюру → руль влево до упора','Правий передній кут підходить до бордюру → кермо вліво до упору','Front right corner nears the curb → full lock left','A jobb első sarok a szegélyhez ér → kormány teljesen balra'],
+s1d:['Руль влево до упора, доворачиваем','Кермо вліво до упору, довертаємо','Full lock left, finish the turn','Kormány teljesen balra, ráfordulunk'],
+s1dc:['Машина почти ровно, вперёд места нет → стоп','Машина майже рівно, попереду місця немає → стоп','Car almost straight, no room ahead → stop','Az autó majdnem egyenes, előre nincs hely → megállás'],
+s1e:['Выравнивание: задний ход, руль вправо до упора','Вирівнювання: задній хід, кермо вправо до упору','Straighten: reverse, full lock right','Kiegyenesítés: hátramenet, kormány teljesen jobbra'],
+s1ec:['Машина параллельна бордюру → руль прямо','Машина паралельна бордюру → кермо прямо','Car parallel to the curb → wheel straight','Az autó párhuzamos a szegéllyel → kormány egyenesbe'],
+s1f:['Колёса прямо, назад — встаём по центру кармана','Колеса прямо, назад — стаємо по центру кишені','Wheels straight, back up to center in the gap','Kerekek egyenesen, hátra a rés közepére'],
+s1t:['Передом заезжаем только в длинный карман — минимум 2 машины. Если не хватило места — сдать назад и выровняться.','Передом заїжджаємо лише в довгу кишеню — мінімум 2 машини. Якщо не вистачило місця — здати назад і вирівнятися.','Go in forward only into a long gap — at least 2 car lengths. If space runs out, back up and straighten.','Előre csak hosszú résbe álljunk — legalább 2 autónyi. Ha kevés a hely, tolassunk és egyenesítsünk.'],
+free2:['свободно ≈ 2 машины','вільно ≈ 2 машини','free ≈ 2 cars','szabad ≈ 2 autó'],
+s2n:['Справа налево передом','Справа наліво передом','Right lane → left side, forward','Jobb sávból balra, előre'],
+shL:['Плечи на уровне середины соседней машины → руль влево до упора','Плечі на рівні середини сусідньої машини → кермо вліво до упору','Shoulders level with the middle of the neighbouring car → full lock left','A vállunk a szomszéd autó közepénél → kormány teljesen balra'],
+s2b:['Руль влево до упора, пересекаем встречную','Кермо вліво до упору, перетинаємо зустрічну','Full lock left, cross the oncoming lane','Kormány teljesen balra, átkeresztezzük a szemközti sávot'],
+inEnd:['Колёса прямо, въезжаем до конца места','Колеса прямо, заїжджаємо до кінця місця','Wheels straight, drive fully into the space','Kerekek egyenesen, beállunk a hely végéig'],
+s2t:['Перед поворотом пропускаем встречных. Ориентир — свои плечи напротив середины машины перед нужным местом.','Перед поворотом пропускаємо зустрічних. Орієнтир — свої плечі навпроти середини машини перед потрібним місцем.','Yield to oncoming traffic first. Reference: your shoulders opposite the middle of the car before your space.','Fordulás előtt elengedjük a szembejövőket. Viszonyítás: a vállunk a kiszemelt hely előtti autó közepénél.'],
+s3n:['Справа направо передом','Справа направо передом','Right lane → right side, forward','Jobb sávból jobbra, előre'],
+s3a:['Едем по правой полосе, поворотник вправо — паркуемся справа','Їдемо правою смугою, поворотник вправо — паркуємося справа','Right lane, right signal — parking on the right','Jobb sáv, jobb irányjelző — jobbra parkolunk'],
+s3b:['Поворотник влево — выезжаем на соседнюю полосу, берём больше места','Поворотник вліво — виїжджаємо на сусідню смугу, беремо більше місця','Left signal — move into the next lane for more room','Bal irányjelző — átsorolunk a szomszéd sávba, több hely'],
+s3c:['Выравниваемся в соседней полосе','Вирівнюємося в сусідній смузі','Straighten in the next lane','Kiegyenesedünk a szomszéd sávban'],
+s3d:['Поворотник вправо, едем прямо','Поворотник вправо, їдемо прямо','Right signal, drive straight','Jobb irányjelző, egyenesen'],
+shR:['Плечи на уровне середины соседней машины → руль вправо до упора','Плечі на рівні середини сусідньої машини → кермо вправо до упору','Shoulders level with the middle of the neighbouring car → full lock right','A vállunk a szomszéd autó közepénél → kormány teljesen jobbra'],
+s3e:['Руль вправо до упора, заезжаем в место','Кермо вправо до упору, заїжджаємо в місце','Full lock right, turn into the space','Kormány teljesen jobbra, behajtunk a helyre'],
+s3t:['Направо передом нужен широкий заход: сначала поворотник влево и уходим в соседнюю полосу, потом поворотник вправо и заезжаем. Иначе задним правым колесом зацепим соседа.','Направо передом потрібен широкий заїзд: спочатку поворотник вліво і йдемо в сусідню смугу, потім поворотник вправо і заїжджаємо. Інакше заднім правим колесом зачепимо сусіда.','Forward into a right-side space needs a wide approach: left signal and move to the next lane first, then right signal and turn in. Otherwise the rear right wheel clips the neighbour.','Jobbra előre széles ív kell: előbb bal irányjelző és átsorolás, aztán jobb irányjelző és beállás. Különben a jobb hátsó kerékkel elkapjuk a szomszédot.'],
+s4n:['Справа налево задом','Справа наліво задом','Right lane → left side, reverse','Jobb sávból balra, tolatva'],
+past:['Проезжаем нужное место','Проїжджаємо потрібне місце','Drive past the space','Elhaladunk a hely mellett'],
+s4b:['Руль влево — уходим под углом','Кермо вліво — йдемо під кутом','Steer left — angle away','Kormány balra — ferdén kiállunk'],
+s4c:['Колёса прямо, чуть вперёд под углом','Колеса прямо, трохи вперед під кутом','Wheels straight, a little forward at an angle','Kerekek egyenesen, kicsit előre ferdén'],
+s4d:['Задний ход. Руль влево до упора','Задній хід. Кермо вліво до упору','Reverse. Full lock left','Hátramenet. Kormány teljesen balra'],
+backEnd:['Колёса прямо, назад до конца места','Колеса прямо, назад до кінця місця','Wheels straight, reverse fully into the space','Kerekek egyenesen, tolatás a hely végéig'],
+s4t:['Встаём под углом ~30° к месту. Крутим влево, когда место видно в левом заднем стекле.','Стаємо під кутом ~30° до місця. Крутимо вліво, коли місце видно в лівому задньому склі.','Set up at ~30° to the space. Steer left once the space shows in the left rear window.','Kb. 30°-os szögben állunk a helyhez. Balra kormányzunk, amikor a hely látszik a bal hátsó ablakban.'],
+s5n:['Справа направо задом','Справа направо задом','Right lane → right side, reverse','Jobb sávból jobbra, tolatva'],
+s5ac:['Плечо на середине второй машины после нужного места → стоп, задний ход, руль вправо до упора','Плече на середині другої машини після потрібного місця → стоп, задній хід, кермо вправо до упору','Shoulder at the middle of the 2nd car after the space → stop, reverse, full lock right','A vállunk a hely utáni második autó közepénél → megállás, hátramenet, kormány teljesen jobbra'],
+s5t:['Крутим руль до упора стоя, потом едем назад медленно. Смотрим в правое зеркало на линию и соседа.','Крутимо кермо до упору стоячи, потім їдемо назад повільно. Дивимося в праве дзеркало на лінію і сусіда.','Turn to full lock while stopped, then reverse slowly. Watch the line and the neighbour in the right mirror.','Állva tekerjük végig a kormányt, majd lassan tolatunk. A jobb tükörben figyeljük a vonalat és a szomszédot.'],
+s6n:['На перекрёстке (U-turn)','На перехресті (U-turn)','At an intersection (U-turn)','Kereszteződésben (U-turn)'],
+s6a:['Едем по своей полосе, поворотник влево','Їдемо своєю смугою, поворотник вліво','Stay in your lane, left signal','Saját sávban, bal irányjelző'],
+s6ac:['Подъехали к перекрёстку, встречных нет → чуть вправо','Під’їхали до перехрестя, зустрічних немає → трохи вправо','At the intersection, no oncoming traffic → slightly right','A kereszteződésnél nincs szembeforgalom → kicsit jobbra'],
+s6b:['Чуть вправо — уходим к правому краю, расширяем разворот','Трохи вправо — йдемо до правого краю, розширюємо розворот','Slightly right — move to the right edge to widen the turn','Kicsit jobbra — a jobb szélre húzódunk, szélesebb ív'],
+s6bc:['Машина под углом ~45° вправо → руль влево до упора','Машина під кутом ~45° вправо → кермо вліво до упору','Car angled ~45° right → full lock left','Az autó kb. 45°-ban jobbra áll → kormány teljesen balra'],
+s6c:['Руль влево до упора — большой разворот','Кермо вліво до упору — великий розворот','Full lock left — big turn','Kormány teljesen balra — nagy ív'],
+s6d:['Руль чуть вправо — выравниваемся в свою полосу','Кермо трохи вправо — вирівнюємося у свою смугу','Slightly right — straighten into your lane','Kormány kicsit jobbra — beállunk a sávunkba'],
+goOn:['Колёса прямо, едем дальше','Колеса прямо, їдемо далі','Wheels straight, drive on','Kerekek egyenesen, tovább'],
+s6t:['Дорога по одной полосе в каждую сторону. Сначала чуть вправо, потом большой разворот влево. Пропускаем встречных и пешеходов. Нельзя при знаке запрета.','Дорога по одній смузі в кожен бік. Спочатку трохи вправо, потім великий розворот вліво. Пропускаємо зустрічних і пішоходів. Не можна при знаку заборони.','One lane each way. First slightly right, then a big left turn. Yield to oncoming traffic and pedestrians. Not allowed where a sign prohibits it.','Irányonként egy sáv. Előbb kicsit jobbra, majd nagy ív balra. Elengedjük a szembejövőket és a gyalogosokat. Tiltó tábla esetén tilos.'],
+s7n:['В три приёма (3-point)','У три прийоми (3-point)','Three-point turn','Megfordulás három részben'],
+s7a:['Прижимаемся к правому краю, стоп','Притискаємося до правого краю, стоп','Pull over to the right edge, stop','Jobb szélre húzódunk, megállunk'],
+s7b:['Руль влево до упора, медленно вперёд','Кермо вліво до упору, повільно вперед','Full lock left, slowly forward','Kormány teljesen balra, lassan előre'],
+s7bc:['Передний бампер ~0,5 м до бордюра → стоп','Передній бампер ~0,5 м до бордюру → стоп','Front bumper ~0.5 m from the curb → stop','Első lökhárító kb. 0,5 m-re a szegélytől → megállás'],
+s7cc:['Задний бампер ~0,5 м до бордюра → стоп','Задній бампер ~0,5 м до бордюру → стоп','Rear bumper ~0.5 m from the curb → stop','Hátsó lökhárító kb. 0,5 m-re a szegélytől → megállás'],
+s7d:['Руль влево до упора, вперёд в свою полосу','Кермо вліво до упору, вперед у свою смугу','Full lock left, forward into your lane','Kormány teljesen balra, előre a sávunkba'],
+s7t:['Поворотник: вперёд влево — левый, назад вправо — правый, снова вперёд влево — левый. Руль крутим в конце каждого хода, пока машина ещё катится, или стоя. Бордюр не задеваем.','Поворотник: вперед вліво — лівий, назад вправо — правий, знову вперед вліво — лівий. Кермо крутимо в кінці кожного ходу, поки машина ще котиться, або стоячи. Бордюр не зачіпаємо.','Signals: forward-left — left, reverse-right — right, forward-left again — left. Turn the wheel at the end of each move while still rolling, or when stopped. Don’t touch the curb.','Irányjelző: előre balra — bal, hátra jobbra — jobb, újra előre balra — bal. A kormányt minden szakasz végén, még gurulva vagy állva tekerjük. A szegélyt nem érintjük.'],
+tPark:['Парковка','Паркування','Parking','Parkolás'],tTurn:['Разворот','Розворот','Turning around','Megfordulás'],
+tPar:['Параллельная','Паралельне','Parallel','Párhuzamos'],tPerp:['Перпендикулярная 90°','Перпендикулярне 90°','Perpendicular 90°','Merőleges 90°'],
+wS:['Руль прямо','Кермо прямо','Wheel straight','Kormány egyenesen'],wR:['Руль вправо','Кермо вправо','Wheel right','Kormány jobbra'],wL:['Руль влево','Кермо вліво','Wheel left','Kormány balra'],
+wFull:[' до упора',' до упору',' full lock',' ütközésig'],wBit:[' немного',' трохи',' slightly',' kicsit'],
+fwd:['вперёд','вперед','forward','előre'],back:['назад','назад','reverse','hátra'],
+sidewalk:['тротуар','тротуар','sidewalk','járda'],ix:['перекрёсток','перехрестя','intersection','kereszteződés'],curbW:['бордюр','бордюр','curb','szegély'],
+lN:['плечи = середина машины','плечі = середина машини','shoulders = car middle','váll = autó közepe'],lC2:['плечо = середина 2-й машины','плече = середина 2-ї машини','shoulder = 2nd car middle','váll = 2. autó közepe'],lL:['плечо = линия','плече = лінія','shoulder = line','váll = vonal'],
+lShb:['плечи = передний бампер задней','плечі = передній бампер задньої','shoulders = rear car’s front bumper','váll = hátsó autó első lökhárítója'],
+lCorner:['угол у бордюра','кут біля бордюру','corner at curb','sarok a szegélynél'],lFb:['бампер у бордюра','бампер біля бордюру','bumper at curb','lökhárító a szegélynél'],lRb:['задний бампер у бордюра','задній бампер біля бордюру','rear bumper at curb','hátsó lökhárító a szegélynél'],
+lMir:['зеркала в одну линию','дзеркала в одну лінію','mirrors in line','tükrök egy vonalban'],lSee:['левое зеркало: задняя машина целиком','ліве дзеркало: задня машина повністю','left mirror: whole rear car','bal tükör: a teljes hátsó autó'],
+lBump:['бампер = бампер','бампер = бампер','bumper = bumper','lökhárító = lökhárító'],lPar:['параллельно бордюру','паралельно бордюру','parallel to curb','párhuzamos a szegéllyel'],
+title:['Парковка и развороты','Паркування і розвороти','Parking and turning around','Parkolás és megfordulás'],
+sub:['Анимация манёвров для экзамена: руль, поворотники, ориентиры.','Анімація маневрів для іспиту: кермо, поворотники, орієнтири.','Exam manoeuvres animated: steering, signals, reference points.','Vizsgamanőverek animációval: kormány, irányjelző, viszonyítási pontok.'],
+note:['Ориентиры примерные — проверьте с инструктором для вашей машины.','Орієнтири приблизні — перевірте з інструктором для вашої машини.','Reference points are approximate — check them with your instructor for your car.','A viszonyítási pontok közelítők — egyeztessük az oktatóval a saját autónkra.']
+};
+const LANGS=['ru','uk','en','hu'];let L=0;
+function tr(k){const v=S[k];return v?v[L]:k}
+const SC=[
+{n:'s0n',lay:'par',cars:[16,4,-1,22,28],curb:14.2,cy:13.1,z:[7.6,14.9],st:{x:4,y:10.5,t:0},tip:'s0t',sg:[
+{l:'s0a',g:'R',d:12,cue:{k:'mir',t:'s0ac'}},
+{l:'revR',g:'R',dir:-1,s:1,a:35,cue:{k:'see',t:'s0bc'}},
+{l:'s0c',g:'R',d:-1.38,cue:{k:'bump',t:'s0cc'}},
+{l:'s0d',g:'R',dir:-1,s:-1,a:35,cue:{k:'par',t:'parStop'}},
+{l:'s0e',g:'',d:0.6}]},
+{n:'s1n',lay:'par',cars:[25.5,10,4,31.5],curb:14.7,cy:13.2,z:[13.6,24.4],zl:'free2',st:{x:3,y:10.8,t:0},tip:'s1t',sg:[
+{l:'rl',g:'R',d:9.3,cue:{k:'shb',t:'s1ac'}},
+{l:'s1b',g:'R',dir:1,s:1,a:20,cue:{k:'ang',t:'s1bc'}},
+{l:'s1c',g:'R',d:5.3,cue:{k:'curb',t:'s1cc'}},
+{l:'s1d',g:'R',dir:1,s:-1,a:17,cue:{k:'curb',t:'s1dc'}},
+{l:'s1e',g:'R',dir:-1,s:1,a:3,cue:{k:'par',t:'s1ec'}},
+{l:'s1f',g:'',d:-1.2}]},
+{n:'s2n',lay:'perp',side:'top',st:{x:3,y:11.05,t:0},tip:'s2t',sg:[
+{l:'rl',g:'L',d:10,cue:{k:'sh',m:'n',t:'shL'}},
+{l:'s2b',g:'L',dir:1,s:-1,a:90,r:3.8},
+{l:'inEnd',g:'',d:3.45}]},
+{n:'s3n',lay:'perp',side:'bot',st:{x:2,y:10.25,t:0},tip:'s3t',sg:[
+{l:'s3a',g:'R',d:6},
+{l:'s3b',g:'L',dir:1,s:-1,a:38.6,r:8},
+{l:'s3c',g:'L',dir:1,s:1,a:38.6,r:8},
+{l:'s3d',g:'R',d:2,cue:{k:'sh',m:'n',t:'shR'}},
+{l:'s3e',g:'R',dir:1,s:1,a:90,r:3.8},
+{l:'inEnd',g:'',d:2.95}]},
+{n:'s4n',lay:'perp',side:'top',st:{x:2,y:10.25,t:0},tip:'s4t',sg:[
+{l:'past',g:'L',d:12},
+{l:'s4b',g:'L',dir:1,s:-1,a:30},
+{l:'s4c',g:'L',d:3},
+{l:'s4d',g:'L',dir:-1,s:-1,a:120},
+{l:'backEnd',g:'',d:-2.35}]},
+{n:'s5n',lay:'perp',side:'bot',fill:[2],st:{x:3,y:10,t:0},tip:'s5t',sg:[
+{l:'past',g:'R',d:14,cue:{k:'sh',m:'c2',t:'s5ac'}},
+{l:'revR',g:'R',dir:-1,s:1,a:90,r:4},
+{l:'backEnd',g:'',d:-1.75}]},
+{n:'s6n',lay:'ix',st:{x:2,y:10.25,t:0},tip:'s6t',sg:[
+{l:'s6a',g:'L',d:9.5,cue:{k:'txt',t:'s6ac'}},
+{l:'s6b',g:'L',dir:1,s:1,a:45,r:6,cue:{k:'txt',t:'s6bc'}},
+{l:'s6c',g:'L',dir:1,s:-1,a:273},
+{l:'s6d',g:'',dir:1,s:1,a:48},
+{l:'goOn',g:'',d:6}]},
+{n:'s7n',lay:'road',st:{x:2,y:10.6,t:0},tip:'s7t',sg:[
+{l:'s7a',g:'R',d:8},
+{l:'s7b',g:'L',dir:1,s:-1,a:64,cue:{k:'fb',t:'s7bc'}},
+{l:'revR',g:'R',dir:-1,s:1,a:34,cue:{k:'rb',t:'s7cc'}},
+{l:'s7d',g:'L',dir:1,s:-1,a:82},
+{l:'goOn',g:'',d:4}]}
+];
+const TREE=[{n:'tPark',c:[{n:'tPar',c:[0,1]},{n:'tPerp',c:[2,3,4,5]}]},{n:'tTurn',c:[6,7]}];
+
+let SCL=19;function fpx(n){return Math.max(n,11/SCL)}
+function build(sc){let x=sc.st.x,y=sc.st.y,t=sc.st.t,T=0;const fr=[{x,y,t,i:0,dir:1,s:0,T:0,g:sc.sg[0].g||''}];
+sc.sg.forEach((g,i)=>{const r=g.r||R;g.T0=T;const d=g.a!==undefined?g.dir*r*g.a*DG:g.d;const dir=d<0?-1:1;const n=Math.max(1,Math.ceil(Math.abs(d)/0.03)),ds=d/n;
+const prev=fr[fr.length-1];if(i>0){const pd=sc.sg[i-1];const pdir=(pd.a!==undefined?pd.dir:Math.sign(pd.d));if(pd.cue){fr.push({...prev,T,cue:pd.cue,i:i-1,stop:1});T+=2.6}else if(pd.p){fr.push({...prev,T,pause:pd.pl,i:i-1});T+=pd.p}else if(pdir!==dir){T+=0.7;fr.push({...prev,T,i:i-1,stop:1})}}
+for(let k=0;k<n;k++){x+=Math.cos(t)*ds;y+=Math.sin(t)*ds;if(g.s)t+=ds*g.s/r;T+=Math.abs(ds)/1.8;fr.push({x,y,t,i,dir,s:g.s||0,r,T,g:g.g||''})}if(g.park)sc.pk={x,y}});
+const lg=sc.sg[sc.sg.length-1];if(lg.cue){fr.push({...fr[fr.length-1],T,cue:lg.cue,stop:1});T+=2.6}return {fr,T};}
+const P=SC.map(build);
+SC.forEach((sc,i)=>{const f=P[i].fr[P[i].fr.length-1];sc.fx=sc.pk?sc.pk.x:f.x;sc.fy=f.y});
+const cv=document.getElementById('cv'),cx=cv.getContext('2d');
+let cur=0,tm=0,playing=true,last=null;
+let cs=getComputedStyle(document.documentElement);
+const V=n=>cs.getPropertyValue(n).trim()||'#888';
+const VY={par:[3.5,16.5],perp:[-0.5,18],ix:[-0.5,18.5],road:[2,14.5]};let VW=W,DPR=1,CAMX=0;
+function size(){const w=cv.clientWidth||680,v=VY[SC[cur].lay];DPR=window.devicePixelRatio||1;VW=w<640?Math.max(18,w/24):W;SCL=w/VW;const hh=(v[1]-v[0])*SCL;cv.width=w*DPR;cv.height=hh*DPR;cv.style.height=hh+'px'}
+function cam(f){const v=VY[SC[cur].lay];CAMX=VW>=W?0:Math.min(W-VW,Math.max(0,f.x+1.25-VW/2));cx.setTransform(DPR*SCL,0,0,DPR*SCL,0,0);cx.translate(-CAMX,-v[0])}
+function rr(x,y,w,h,r){cx.beginPath();cx.roundRect(x,y,w,h,r)}
+function car(x,y,t,col,s,r,rev,main,sg){cx.save();cx.translate(x,y);cx.rotate(t);
+const del=s?s*Math.atan(2.7/(r||R)):0;cx.fillStyle='#2C2C2A';
+[[0,-0.8],[0,0.8]].forEach(([a,b])=>{cx.fillRect(a-0.35,b-0.12,0.7,0.24)});
+[[2.7,-0.8],[2.7,0.8]].forEach(([a,b])=>{cx.save();cx.translate(a,b);cx.rotate(del);cx.fillRect(-0.35,-0.12,0.7,0.24);cx.restore()});
+cx.fillStyle=col;cx.fillRect(1.9,-1.12,0.25,0.3);cx.fillRect(1.9,0.82,0.25,0.3);rr(-1,-0.9,4.5,1.8,0.35);cx.fill();
+cx.fillStyle='rgba(255,255,255,0.55)';rr(2.0,-0.72,0.7,1.44,0.15);cx.fill();rr(-0.55,-0.68,0.45,1.36,0.12);cx.fill();
+if(main){cx.fillStyle='#FAC775';cx.fillRect(3.32,-0.8,0.16,0.35);cx.fillRect(3.32,0.45,0.16,0.35);
+cx.fillStyle=rev?'#ffffff':'#E24B4A';cx.fillRect(-1,-0.8,0.14,0.35);cx.fillRect(-1,0.45,0.14,0.35);if(sg&&blink()){const b=sg==='L'?-0.9:0.9;cx.fillStyle=AM;cx.beginPath();cx.arc(3.3,b,0.32,0,7);cx.arc(-0.85,b,0.32,0,7);cx.fill()}}
+cx.restore()}
+function hl(y,x0,x1,dash,c,w){cx.strokeStyle=c;cx.lineWidth=w||0.12;cx.setLineDash(dash?[1.5,1.2]:[]);cx.beginPath();cx.moveTo(x0,y);cx.lineTo(x1,y);cx.stroke();cx.setLineDash([])}
+function scene(sc){const road=V('--bg-neutral'),ln=V('--text-muted'),bd=V('--border-strong');
+cx.clearRect(-1,-6,W+2,50);
+if(sc.lay==='ix'){const xa=15,xb=22,rc=6;cx.fillStyle=road;cx.beginPath();cx.moveTo(0,5);cx.lineTo(xa-rc,5);cx.arc(xa-rc,5-rc,rc,Math.PI/2,0,true);cx.lineTo(xa,-5);cx.lineTo(xb,-5);cx.lineTo(xb,5-rc);cx.arc(xb+rc,5-rc,rc,Math.PI,Math.PI/2,true);cx.lineTo(W,5);cx.lineTo(W,12);cx.lineTo(xb+rc,12);cx.arc(xb+rc,12+rc,rc,1.5*Math.PI,Math.PI,true);cx.lineTo(xb,30);cx.lineTo(xa,30);cx.lineTo(xa,12+rc);cx.arc(xa-rc,12+rc,rc,0,-Math.PI/2,true);cx.lineTo(0,12);cx.closePath();cx.fill();cx.strokeStyle=bd;cx.lineWidth=0.2;cx.stroke();
+hl(8.5,0,xa-rc,1,ln);hl(8.5,xb+rc,W,1,ln);cx.strokeStyle=ln;cx.lineWidth=0.12;cx.setLineDash([1.5,1.2]);cx.beginPath();cx.moveTo(18.5,-2);cx.lineTo(18.5,-1);cx.moveTo(18.5,20);cx.lineTo(18.5,25);cx.stroke();cx.setLineDash([]);
+cx.fillStyle=ln;arrow(3,10.25,0);arrow(33,6.75,Math.PI);cx.fillStyle=V('--text-secondary');cx.font=fpx(0.7)+'px system-ui,sans-serif';cx.fillText(tr('ix'),CAMX+1,14);return}
+if(sc.lay==='road'){cx.fillStyle=road;cx.fillRect(0,4,W,8);cx.strokeStyle=bd;cx.lineWidth=0.25;hl(4,0,W,0,bd,0.25);hl(12,0,W,0,bd,0.25);hl(8,0,W,1,ln);cx.fillStyle=ln;arrow(30,6,Math.PI);arrow(30,10,0);cx.fillStyle=V('--text-secondary');cx.font=fpx(0.7)+'px system-ui,sans-serif';cx.fillText(tr('curbW'),CAMX+1,3.5);cx.fillText(tr('curbW'),CAMX+1,13.1);return}
+cx.fillStyle=road;cx.fillRect(0,5,W,7);
+cx.strokeStyle=ln;cx.lineWidth=0.12;cx.setLineDash([1.5,1.2]);cx.beginPath();cx.moveTo(0,8.5);cx.lineTo(W,8.5);cx.stroke();cx.setLineDash([]);
+cx.fillStyle=ln;arrow(2,6.75,Math.PI);arrow(W-2,10.25,0);arrow(W/2+9,6.75,Math.PI);arrow(W/2-9,10.25,0);
+if(sc.lay==='par'){cx.fillStyle=road;cx.fillRect(0,12,W,sc.curb-12);cx.strokeStyle=bd;cx.lineWidth=0.2;cx.beginPath();cx.moveTo(0,sc.curb);cx.lineTo(W,sc.curb);cx.stroke();
+cx.strokeStyle=ln;cx.lineWidth=0.08;cx.setLineDash([0.6,0.6]);cx.beginPath();cx.moveTo(0,12);cx.lineTo(W,12);cx.stroke();cx.setLineDash([]);
+cx.fillStyle='rgba(29,158,117,0.13)';cx.fillRect(sc.z[0],12.05,sc.z[1]-sc.z[0],sc.curb-12.1);
+sc.cars.forEach(c=>car(c,sc.cy,0,'#888780'));if(sc.zl){cx.fillStyle=V('--text-secondary');cx.font=fpx(0.7)+'px system-ui,sans-serif';cx.fillText(tr(sc.zl),sc.z[0]+0.3,sc.curb+1.1)}
+cx.fillStyle=V('--text-secondary');cx.font=fpx(0.7)+'px system-ui,sans-serif';cx.fillText(tr('sidewalk'),CAMX+1,sc.curb+1.1);}
+else{const rows=[{y0:0,y1:5,top:true},{y0:12,y1:17,top:false}];
+if(sc.thru){rows.push({y0:17,y1:22,top:true,opp:true});cx.fillStyle=road;cx.fillRect(0,22,W,7);cx.strokeStyle=ln;cx.lineWidth=0.12;cx.setLineDash([1.5,1.2]);cx.beginPath();cx.moveTo(0,25.5);cx.lineTo(W,25.5);cx.stroke();cx.setLineDash([]);cx.fillStyle=ln;arrow(W-2,27.25,0);arrow(2,23.75,Math.PI);cx.fillStyle=V('--text-secondary');cx.font=fpx(0.7)+'px system-ui,sans-serif';cx.fillText('соседний проезд',1,28.6)}
+rows.forEach(rw=>{const tgt=!rw.opp&&(sc.side==='top')===rw.top;const xc=(tgt||rw.opp)?sc.fx:(sc.side==='top'?sc.fx+1.3:sc.fx-1.3);
+for(let k=-14;k<=14;k++){const c=xc+k*2.6,x0=c-1.3;if(x0>W||x0+2.6<0)continue;
+cx.strokeStyle=bd;cx.lineWidth=0.1;cx.beginPath();cx.moveTo(x0,rw.y0);cx.lineTo(x0,rw.y1);cx.stroke();
+if(tgt&&k===0){cx.fillStyle='rgba(29,158,117,0.15)';cx.fillRect(x0+0.05,rw.y0,2.5,5);continue}
+if(rw.opp&&k===0){cx.strokeStyle=AM;cx.setLineDash([0.4,0.3]);cx.lineWidth=0.08;cx.strokeRect(x0+0.1,rw.y0+0.1,2.4,4.8);cx.setLineDash([]);continue}
+if(((k+20)*7+(rw.top?3:1))%5===0&&!(sc.fill&&!rw.top&&sc.fill.includes(k)))continue;
+if(sc.thru&&!rw.top&&k===1)continue;
+if(rw.opp){car(c,20.9,-Math.PI/2,'#888780');continue}const yy=rw.top?1.1:15.9;car(c,yy,rw.top?Math.PI/2:-Math.PI/2,'#888780')}});
+}
+}
+
+const AM='#EF9F27';
+function blink(){return Math.floor(performance.now()/380)%2===0}
+function wp(f,a,b){return [f.x+a*Math.cos(f.t)-b*Math.sin(f.t),f.y+a*Math.sin(f.t)+b*Math.cos(f.t)]}
+function dot(p,r){cx.beginPath();cx.arc(p[0],p[1],r||0.45,0,7);cx.stroke()}
+function lbl(t,x,y){cx.font=fpx(0.75)+'px system-ui,sans-serif';const w=cx.measureText(t).width+0.6;x=Math.max(CAMX+0.2,Math.min(CAMX+VW-w-0.2,x));cx.fillStyle=V('--surface-2');cx.strokeStyle=AM;cx.lineWidth=0.08;rr(x,y-0.75,w,1.05,0.2);cx.fill();cx.stroke();cx.fillStyle=V('--text-primary');cx.fillText(t,x+0.3,y)}
+function cueDraw(f){const c=f.cue,sc=SC[cur];cx.strokeStyle=AM;cx.lineWidth=0.12;
+if(c.k==='sh'){const s=wp(f,1.2,-0.4),top=sc.side==='top',tx=c.m==='n'?sc.fx-2.6:c.m==='c2'?sc.fx+5.2:sc.fx+6.5,y1=top?0.3:16.8;cx.setLineDash([0.4,0.3]);cx.beginPath();cx.moveTo(tx,s[1]);cx.lineTo(tx,y1);cx.stroke();cx.setLineDash([]);cx.fillStyle=AM;cx.beginPath();cx.arc(s[0],s[1],0.32,0,7);cx.fill();
+cx.lineWidth=0.18;if(c.m!=='l'){cx.strokeRect(tx-1,top?0:12.3,2,4.7)}else{cx.beginPath();cx.moveTo(tx,12);cx.lineTo(tx,17);cx.stroke()}
+lbl(tr(c.m==='n'?'lN':c.m==='c2'?'lC2':'lL'),s[0]-3,top?s[1]+2.2:s[1]-1.6)}
+if(c.k==='shb'){const s=wp(f,1.2,-0.4),bx=13.5;cx.setLineDash([0.4,0.3]);cx.beginPath();cx.moveTo(bx,s[1]);cx.lineTo(bx,sc.curb);cx.stroke();cx.setLineDash([]);cx.fillStyle=AM;cx.beginPath();cx.arc(s[0],s[1],0.32,0,7);cx.fill();cx.lineWidth=0.18;cx.beginPath();cx.moveTo(bx,12.4);cx.lineTo(bx,14.2);cx.stroke();lbl(tr('lShb'),s[0]-6,s[1]-1.6)}
+if(c.k==='ang'){const e=wp(f,7,0),b=wp(f,-2,0);cx.setLineDash([0.4,0.3]);cx.beginPath();cx.moveTo(b[0],b[1]);cx.lineTo(e[0],e[1]);cx.moveTo(b[0],f.y);cx.lineTo(e[0]+1,f.y);cx.stroke();cx.setLineDash([]);lbl('~20°',f.x+5,f.y-0.6)}
+if(c.k==='curb'){const p=wp(f,3.5,0.9);dot(p,0.4);cx.lineWidth=0.18;cx.beginPath();cx.moveTo(p[0]-3,sc.curb);cx.lineTo(p[0]+3,sc.curb);cx.stroke();lbl(tr('lCorner'),p[0]-2,10.8)}
+if(c.k==='ixc'){const p=wp(f,1.2,-0.4);cx.fillStyle=AM;cx.beginPath();cx.arc(p[0],p[1],0.32,0,7);cx.fill();cx.setLineDash([0.4,0.3]);cx.beginPath();cx.moveTo(18.5,2);cx.lineTo(18.5,15);cx.stroke();cx.setLineDash([]);lbl('середина перекрёстка',19.2,15.6)}
+if(c.k==='fb'){const p=wp(f,3.5,0);dot(p,0.45);hl(4,p[0]-3,p[0]+3,0,AM,0.2);lbl(tr('lFb'),p[0]+1,2.6)}
+if(c.k==='rb'){const p=wp(f,-1,0);dot(p,0.45);hl(12,p[0]-3,p[0]+3,0,AM,0.2);lbl(tr('lRb'),p[0]-4,13.6)}
+if(c.k==='mir'){const m=wp(f,2.02,0.97),fm=[18.02,13.1-0.97];cx.setLineDash([0.4,0.3]);cx.beginPath();cx.moveTo(m[0],5.5);cx.lineTo(m[0],15);cx.stroke();cx.setLineDash([]);dot(m);dot(fm);lbl(tr('lMir'),m[0]-4,6.4)}
+if(c.k==='see'){const m=wp(f,2.02,-0.97);cx.fillStyle='rgba(239,159,39,0.18)';cx.beginPath();cx.moveTo(m[0],m[1]);cx.lineTo(3,12.2);cx.lineTo(3,14);cx.lineTo(7.5,14);cx.closePath();cx.fill();cx.setLineDash([0.4,0.3]);cx.beginPath();cx.moveTo(m[0],m[1]);cx.lineTo(3,12.2);cx.moveTo(m[0],m[1]);cx.lineTo(7.5,14);cx.stroke();cx.setLineDash([]);cx.lineWidth=0.18;cx.strokeRect(2.9,12.1,4.7,2);dot(m);lbl(tr('lSee'),m[0]-9,m[1]-1.6)}
+if(c.k==='bump'){const b=wp(f,3.5,0.9);cx.setLineDash([0.4,0.3]);cx.beginPath();cx.moveTo(15,9.6);cx.lineTo(15,14.2);cx.stroke();cx.setLineDash([]);dot(b,0.4);cx.lineWidth=0.18;cx.beginPath();cx.moveTo(15,12.2);cx.lineTo(15,14);cx.stroke();lbl(tr('lBump'),15.6,9.4)}
+if(c.k==='par'){cx.setLineDash([0.4,0.3]);cx.beginPath();cx.moveTo(f.x-2,f.y);cx.lineTo(f.x+4.5,f.y);cx.stroke();cx.beginPath();cx.moveTo(f.x-2,sc.curb);cx.lineTo(f.x+4.5,sc.curb);cx.stroke();cx.setLineDash([]);lbl(tr('lPar'),f.x-2,11.5)}}
+function arrow(x,y,a){cx.save();cx.translate(x,y);cx.rotate(a);cx.beginPath();cx.moveTo(0.6,0);cx.lineTo(-0.3,-0.4);cx.lineTo(-0.3,0.4);cx.closePath();cx.fill();cx.restore()}
+function idx(fr,T){let lo=0,hi=fr.length-1;while(lo<hi){const m=(lo+hi+1)>>1;if(fr[m].T<=T)lo=m;else hi=m-1}return lo}
+function draw(){const sc=SC[cur],p=P[cur],fr=p.fr;const k=idx(fr,tm);cam(fr[k]);scene(sc);
+cx.lineWidth=0.14;cx.lineCap='round';
+for(let j=1;j<=k;j++){const a=fr[j-1],b=fr[j];if(a.x===b.x&&a.y===b.y)continue;cx.strokeStyle=b.dir<0?'#D85A30':'#1D9E75';cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke()}
+const f=fr[k];const moving=!f.stop&&!f.pause;
+car(f.x,f.y,f.t,'#378ADD',f.s,f.r,f.dir<0,true,f.g);
+const bl=blink();['sgL','sgR'].forEach(id=>{const on=f.g===(id==='sgL'?'L':'R');const e=document.getElementById(id);e.style.color=on?(bl?AM:'var(--text-muted)'):'var(--border-strong)'});
+if(f.cue)cueDraw(f);if(f.pause){cx.fillStyle=V('--text-primary');cx.font=fpx(0.9)+'px system-ui,sans-serif';cx.fillText(f.pause,f.x+1.6,f.y-1.5)}
+document.querySelectorAll('#steps li').forEach(li=>{const j=+li.dataset.i,isc=li.dataset.c==='1';li.classList.toggle('on',j===f.i&&(isc?!!f.cue:!f.cue));li.style.outline=(isc&&j===f.i&&f.cue)?'1.5px solid '+AM:'none'});const cb=document.getElementById('cue');cb.style.visibility=f.cue?'visible':'hidden';cb.querySelector('span').textContent=f.cue?tr(f.cue.t):'.';
+const g=document.getElementById('gear');const rev=f.dir<0;g.textContent=rev?'R':'D';g.style.background=rev?'var(--bg-danger)':'var(--bg-success)';g.style.color=rev?'var(--text-danger)':'var(--text-success)';
+const w=document.getElementById('wheel');w.style.transform='rotate('+(f.s*120)+'deg)';
+document.getElementById('wtxt').textContent=f.s===0?tr('wS'):tr(f.s>0?'wR':'wL')+tr((f.r||R)<=5.5?'wFull':'wBit');
+document.getElementById('scrub').value=Math.min(1000,Math.round(tm/p.T*1000))}
+function setSc(i){cur=i;tm=0;size();
+const ul=document.getElementById('steps');ul.innerHTML='';SC[i].sg.forEach((g,j)=>{const li=document.createElement('li');const rv=(g.a!==undefined?g.dir:Math.sign(g.d))<0;const sgi=g.g?'<i class="ti ti-arrow-big-'+(g.g==='L'?'left':'right')+'" aria-hidden="true" style="color:'+AM+';font-size:16px"></i>':'<i class="ti ti-arrow-big-right" aria-hidden="true" style="visibility:hidden;font-size:16px"></i>';li.innerHTML=sgi+'<span class="pk-badge" style="background:'+(rv?'var(--bg-danger)':'var(--bg-success)')+';color:'+(rv?'var(--text-danger)':'var(--text-success)')+'">'+(rv?'R':'D')+'</span><span>'+(j+1)+'. '+tr(g.l)+'</span>';li.dataset.i=j;ul.appendChild(li);if(g.cue){const c=document.createElement('li');c.dataset.i=j;c.dataset.c='1';c.style.paddingLeft='62px';c.innerHTML='<i class="ti ti-eye" aria-hidden="true" style="color:'+AM+'"></i><span>'+tr(g.cue.t)+'</span>';c.style.cursor='pointer';c.onclick=()=>{const p=P[cur].fr.find(q=>q.cue===g.cue);tm=p.T+0.01;setPlay(false);draw()};ul.appendChild(c)}});
+document.getElementById('tip').textContent=tr(SC[i].tip);draw()}
+let m1=0,m2=0;
+function btns(id,items,on,fn){const el=document.getElementById(id);el.innerHTML='';el.style.display=items.length?'flex':'none';items.forEach((it,j)=>{const b=document.createElement('button');b.textContent=it;if(j===on)b.className='on';b.onclick=()=>fn(j);el.appendChild(b)})}
+function menu(){const t=TREE[m1];btns('m1',TREE.map(x=>tr(x.n)),m1,j=>{m1=j;m2=0;pick(0)});
+let leaf;if(typeof t.c[0]==='number'){btns('m2',[],0,()=>{});leaf=t.c}else{btns('m2',t.c.map(x=>tr(x.n)),m2,j=>{m2=j;pick(0)});leaf=t.c[m2].c}
+btns('tabs',leaf.map(i=>tr(SC[i].n)),leaf.indexOf(cur),j=>pick(j));return leaf}
+function pick(j){const t=TREE[m1];const leaf=typeof t.c[0]==='number'?t.c:t.c[m2].c;setSc(leaf[j]);setPlay(true);menu()}
+function setPlay(v){playing=v;const b=document.getElementById('play');b.innerHTML='<i class="ti ti-player-'+(v?'pause':'play')+'" aria-hidden="true"></i>';b.setAttribute('aria-label',v?'Пауза':'Играть')}
+document.getElementById('play').onclick=()=>{if(!playing&&tm>=P[cur].T)tm=0;setPlay(!playing)};
+document.getElementById('rst').onclick=()=>{tm=0;setPlay(true);draw()};
+document.getElementById('scrub').oninput=e=>{tm=e.target.value/1000*P[cur].T;setPlay(false);draw()};
+function loop(ts){if(last!==null&&playing){tm+=(ts-last)/1000*parseFloat(document.getElementById('spd').value);const p=P[cur];if(tm>=p.T+1.5){tm=0}}last=ts;if(playing)draw();requestAnimationFrame(loop)}
+window.addEventListener('resize',()=>{size();draw()});
+function setLang(i){L=i;try{localStorage.setItem('pk-lang',LANGS[i])}catch(e){}document.documentElement.lang=LANGS[i];document.querySelectorAll('#lang button').forEach((b,j)=>b.className=j===i?'on':'');['title','sub','note','fwd','back'].forEach(k=>{const e=document.getElementById('t-'+k);if(e)e.textContent=tr(k)});document.title=tr('title');const keep=tm;setSc(cur);tm=keep;menu();draw()}
+(function(){const q=new URLSearchParams(location.search).get('lang');let s=null;try{s=localStorage.getItem('pk-lang')}catch(e){}const n=(navigator.language||'ru').slice(0,2);const c=[q,s,n].find(x=>LANGS.includes(x));L=c?LANGS.indexOf(c):0;
+const el=document.getElementById('lang');LANGS.forEach((x,i)=>{const b=document.createElement('button');b.textContent=x.toUpperCase();b.onclick=()=>setLang(i);el.appendChild(b)})})();
+size();setSc(0);menu();setLang(L);requestAnimationFrame(loop);
+try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{cs=getComputedStyle(document.documentElement);draw()})}catch(e){}
+</script>
+</body>
+</html>
